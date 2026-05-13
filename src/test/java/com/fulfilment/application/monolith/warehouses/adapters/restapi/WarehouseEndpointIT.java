@@ -2,6 +2,7 @@ package com.fulfilment.application.monolith.warehouses.adapters.restapi;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -57,5 +58,42 @@ public class WarehouseEndpointIT {
     //         not(containsString("ZWOLLE-001")),
     //         containsString("AMSTERDAM-001"),
     //         containsString("TILBURG-001"));
+  }
+
+  @Test
+  public void testWarehouseSearchEndpoint() {
+    // No filters, should return all non-archived warehouses (default pagination)
+    given()
+      .when()
+      .get("warehouse/search")
+      .then()
+      .statusCode(200)
+      .body(containsString("MWH.001")); // Adjust to match expected warehouse(s)
+
+    // Filter by location
+    given()
+      .queryParam("location", "AMSTERDAM-001")
+      .when()
+      .get("warehouse/search")
+      .then()
+      .statusCode(200)
+      .body(containsString("AMSTERDAM-001"));
+
+    // Filter by minCapacity
+    given()
+      .queryParam("minCapacity", 50)
+      .when()
+      .get("warehouse/search")
+      .then()
+      .statusCode(200);
+
+    // Pagination
+    given()
+      .queryParam("page", 0)
+      .queryParam("pageSize", 1)
+      .when()
+      .get("warehouse/search")
+      .then()
+      .statusCode(200);
   }
 }

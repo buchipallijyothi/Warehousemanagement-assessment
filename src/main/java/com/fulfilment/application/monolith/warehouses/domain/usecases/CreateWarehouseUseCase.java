@@ -42,7 +42,7 @@ public class CreateWarehouseUseCase implements CreateWarehouseOperation {
           ") exceeds location max capacity (" + location.maxCapacity() + ")");
     }
 
-    // - Stock cannot exceed capacity
+
     if (warehouse.stock > warehouse.capacity) {
       throw new IllegalArgumentException(
           "Warehouse stock (" + warehouse.stock + 

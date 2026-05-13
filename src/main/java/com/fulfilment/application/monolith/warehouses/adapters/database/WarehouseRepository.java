@@ -3,12 +3,51 @@ package com.fulfilment.application.monolith.warehouses.adapters.database;
 import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.util.List;
 
 @ApplicationScoped
 public class WarehouseRepository implements WarehouseStore, PanacheRepository<DbWarehouse> {
+  /**
+   * Search warehouses with optional filters, sorting, and pagination. Excludes archived warehouses.
+   */
+  public List<Warehouse> searchWarehouses(String location, Integer minCapacity, Integer maxCapacity, String sortBy, String sortOrder, Integer page, Integer pageSize) {
+    var query = "archivedAt is null";
+    java.util.Map<String, Object> params = new java.util.HashMap<>();
+    if (location != null && !location.isEmpty()) {
+      query += " and location = :location";
+      params.put("location", location);
+    }
+    if (minCapacity != null) {
+      query += " and capacity >= :minCapacity";
+      params.put("minCapacity", minCapacity);
+    }
+    if (maxCapacity != null) {
+      query += " and capacity <= :maxCapacity";
+      params.put("maxCapacity", maxCapacity);
+    }
+
+    String sortField = "createdAt";
+    if ("capacity".equals(sortBy)) sortField = "capacity";
+    String order = "asc";
+    if ("desc".equalsIgnoreCase(sortOrder)) order = "desc";
+
+    int p = (page != null && page >= 0) ? page : 0;
+    int ps = (pageSize != null && pageSize > 0) ? Math.min(pageSize, 100) : 10;
+    Sort sort = "desc".equalsIgnoreCase(sortOrder)
+            ? Sort.descending(sortField)
+            : Sort.ascending(sortField);
+
+
+    var dbList = find(query, sort, params)
+            .page(p, ps)
+            .list();
+
+
+    return dbList.stream().map(DbWarehouse::toWarehouse).toList();
+  }
 
   @Override
   @Transactional
@@ -41,13 +80,20 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
       if (warehouse.archivedAt != null) {
         db.archivedAt = warehouse.archivedAt;
       }
-      // Persist will check the @Version for optimistic locking
+
     }
   }
 
   @Override
   @Transactional
   public void remove(Warehouse warehouse) {
+    if (warehouse == null) {
+      throw new IllegalArgumentException("Warehouse object cannot be null");
+    }
+    if (warehouse.businessUnitCode == null) {
+      throw new IllegalArgumentException("Warehouse business unit code cannot be null");
+    }
+
     DbWarehouse db = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
     if (db == null) {
       throw new IllegalArgumentException(

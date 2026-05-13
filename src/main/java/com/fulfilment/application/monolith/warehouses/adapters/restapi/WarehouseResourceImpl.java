@@ -4,6 +4,7 @@ import com.fulfilment.application.monolith.warehouses.adapters.database.Warehous
 import com.fulfilment.application.monolith.warehouses.domain.ports.ArchiveWarehouseOperation;
 import com.fulfilment.application.monolith.warehouses.domain.ports.CreateWarehouseOperation;
 import com.fulfilment.application.monolith.warehouses.domain.ports.ReplaceWarehouseOperation;
+import com.fulfilment.application.monolith.warehouses.domain.ports.SearchWarehousesOperation;
 import com.warehouse.api.WarehouseResource;
 import com.warehouse.api.beans.Warehouse;
 import jakarta.enterprise.context.RequestScoped;
@@ -11,15 +12,35 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 
 @RequestScoped
 public class WarehouseResourceImpl implements WarehouseResource {
+  @GET
+  @Path("/search")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<Warehouse> searchWarehouses(
+      @QueryParam("location") String location,
+      @QueryParam("minCapacity") Integer minCapacity,
+      @QueryParam("maxCapacity") Integer maxCapacity,
+      @QueryParam("sortBy") String sortBy,
+      @QueryParam("sortOrder") String sortOrder,
+      @QueryParam("page") Integer page,
+      @QueryParam("pageSize") Integer pageSize) {
+    var results = searchWarehousesOperation.search(location, minCapacity, maxCapacity, sortBy, sortOrder, page, pageSize);
+    return results.stream().map(this::toWarehouseResponse).toList();
+  }
 
   @Inject private WarehouseRepository warehouseRepository;
   @Inject private CreateWarehouseOperation createWarehouseOperation;
   @Inject private ArchiveWarehouseOperation archiveWarehouseOperation;
   @Inject private ReplaceWarehouseOperation replaceWarehouseOperation;
+  @Inject private SearchWarehousesOperation searchWarehousesOperation;
 
   @Override
   public List<Warehouse> listAllWarehousesUnits() {

@@ -21,28 +21,32 @@ public class RemoveWarehouseUseCase implements RemoveWarehouseOperation {
 
   @Override
   public void remove(Warehouse warehouse) {
-    // Validation 1: Warehouse must exist
+
+    if(warehouse ==null){
+      throw new IllegalArgumentException("Warehouse cannot be null");
+    }
+    if(warehouse.businessUnitCode==null || warehouse.businessUnitCode.isBlank()){
+      throw new IllegalArgumentException("Warehouse business unit code cannot be null");
+    }
     Warehouse existing = warehouseStore.findByBusinessUnitCode(warehouse.businessUnitCode);
     if (existing == null) {
       throw new IllegalArgumentException(
           "Warehouse with business unit code '" + warehouse.businessUnitCode + "' does not exist");
     }
 
-    // Validation 2: Cannot delete archived warehouses
+
     if (existing.archivedAt != null) {
       throw new IllegalArgumentException(
           "Warehouse with business unit code '" + warehouse.businessUnitCode +
           "' is archived and cannot be deleted. Archive must be reversed first.");
     }
 
-    // Validation 3: Warehouse must be empty (no stock) before deletion
+
     if (existing.stock > 0) {
       throw new IllegalArgumentException(
           "Warehouse with business unit code '" + warehouse.businessUnitCode +
           "' has stock (" + existing.stock + ") and cannot be deleted. Stock must be cleared first.");
     }
-
-
     warehouseStore.remove(existing);
   }
 }
